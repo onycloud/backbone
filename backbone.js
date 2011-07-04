@@ -166,7 +166,15 @@
 
     // Return a copy of the model's `attributes` object.
     toJSON : function() {
-      return _.clone(this.attributes);
+      var json = _.clone(this.attributes),
+          val;
+      for(var attr in json) {
+        val = json[attr];
+        if(json.hasOwnProperty(attr) &&  _.isFunction(val.toJSON)) {
+          json[attr] = val.toJSON();
+        }
+      }
+      return json;
     },
 
     // Get the value of an attribute.
@@ -196,7 +204,6 @@
       options || (options = {});
       if (!attrs) return this;
       if (attrs.attributes) attrs = attrs.attributes;
-      var now = this.attributes, escaped = this._escapedAttributes;
 
       // Run validation.
       if (!options.silent && this.validate && !this._performValidation(attrs, options)) return false;
@@ -210,19 +217,39 @@
 
       // Update attributes.
       for (var attr in attrs) {
-        var val = attrs[attr];
-        if (!_.isEqual(now[attr], val)) {
-          now[attr] = val;
-          delete escaped[attr];
-          this._changed = true;
-          if (!options.silent) this.trigger('change:' + attr, this, val, options);
-        }
+        this._set(attr, attrs[attr], options);
       }
 
       // Fire the `"change"` event, if the model has been changed.
       if (!alreadyChanging && !options.silent && this._changed) this.change(options);
       this._changing = false;
       return this;
+    },
+
+    _set: function(attr, newval, options) {
+      var B =  this[attr],      // A backbone Model or Collection
+          attrs = this.attributes,
+          old = attrs[attr],
+          escaped = this._escapedAttributes;
+
+      if (!_.isEqual(newval, old)) {
+        if(_.isArray(newval) && B) { // is Collection
+          // will trigger reset event
+          old ? attrs[attr] = old.reset(newval, options)
+            : attrs[attr] = new B(newval);
+        } else if (newval && !_.isNumber(newval) && !_.isString(newval) && B) {
+          // is A Model
+          old ? newval[attr] = old.set(newval, options)
+            : attrs[attr] = new B(newval);
+        } else {
+          attrs[attr] = newval;
+        }
+        delete escaped[attr];
+        this._changed = true;
+        if (!options.silent) {
+          this.trigger('change:' + attr, this, newval, options);
+        }
+      }
     },
 
     // Remove an attribute from the model, firing `"change"` unless you choose
