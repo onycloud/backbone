@@ -167,6 +167,28 @@ $(document).ready(function() {
     equals(i, 2, 'Unset does not fire an event for missing attributes.');
   });
 
+  test("Model: nested attribute", function() {
+    var data = {
+      id: 1,
+      students: [{id:1, name: 'a'}, {id: 2, name: 'b'}],
+      info: {
+        name: 'name',
+        sex : false
+      }
+    };
+    var Col =  Backbone.Collection.extend({});
+    var Model = Backbone.Model.extend({
+      students: Col,
+      info: Backbone.Model
+    });
+
+    var teacher = new Model(data);
+
+    ok(teacher.get('students') instanceof Col, 'students is a Collection');
+    ok(teacher.get('info') instanceof Backbone.Model, 'info is a Model');
+    ok(_.isEqual(teacher.toJSON(), data), 'toJSON is recursive');
+  });
+
   test("Model: using a non-default id attribute.", function() {
     var MongoModel = Backbone.Model.extend({idAttribute : '_id'});
     var model = new MongoModel({id: 'eye-dee', _id: 25, title: 'Model'});
