@@ -221,7 +221,7 @@
       }
 
       // Fire the `"change"` event, if the model has been changed.
-      if (!alreadyChanging && !options.silent && this._changed)  this.change(options);
+      if (!alreadyChanging && !options.silent && this._changed) this.change(options);
       this._changing = false;
       return this;
     },
