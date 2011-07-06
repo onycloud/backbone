@@ -236,10 +236,11 @@
       if (_.isEqual(newval, oldval)) return;
 
       // Use duck typing to check if Klass inherits Model/Collection
-      if(_.isArray(newval) && Klass && _.isFunction(Klass.reset)) {
+      if(_.isArray(newval) && Klass && _.isFunction(Klass.prototype.reset)) {
         now[attr] = oldval ? oldval.reset(newval, options)
           : new Klass(newval, options);
-      } else if ($.isPlainObject(newval) && Klass && _.isFunction(Klass.set)) {
+      } else if ($.isPlainObject(newval) && Klass
+                 && _.isFunction(Klass.prototype.set)) {
         now[attr] = oldval ? oldval.set(newval, options)
           : new Klass(newval, options);
       } else {
