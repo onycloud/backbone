@@ -226,29 +226,29 @@
       return this;
     },
 
-    _set: function(attr, newval, options) {
-      var B =  this[attr],      // A backbone Model or Collection
-          attrs = this.attributes,
-          old = attrs[attr],
+    _set : function(attr, newval, options) {
+      var Klass =  this[attr],
+          now = this.attributes,
+          oldval = now[attr],
           escaped = this._escapedAttributes;
 
-      if (!_.isEqual(newval, old)) {
-        if(_.isArray(newval) && B) { // is Collection
-          // will trigger reset event
-          old ? attrs[attr] = old.reset(newval, options)
-            : attrs[attr] = new B(newval);
-        } else if (newval && !_.isNumber(newval) && !_.isString(newval) && B) {
-          // is A Model
-          old ? newval[attr] = old.set(newval, options)
-            : attrs[attr] = new B(newval);
-        } else {
-          attrs[attr] = newval;
-        }
-        delete escaped[attr];
-        this._changed = true;
-        if (!options.silent) {
-          this.trigger('change:' + attr, this, newval, options);
-        }
+      if (!newval) return;
+      if (_.isEqual(newval, oldval)) return;
+
+      if(_.isArray(newval) && (Klass instanceof Backbone.Collection)) {
+        now[attr] = oldval ? oldval.reset(newval, options)
+          : new Klass(newval, options);
+      } else if ($.isPlainObject(newval) && (Klass instanceof Backbone.Model) {
+        now[attr] = oldval ? oldval.set(newval, options)
+          : new Klass(newval, options);
+      } else {
+        now[attr] = newval;
+      }
+
+      delete escaped[attr];
+      this._changed = true;
+      if (!options.silent) {
+        this.trigger('change:' + attr, this, now[attr], options);
       }
     },
 
