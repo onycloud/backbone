@@ -221,9 +221,7 @@
       }
 
       // Fire the `"change"` event, if the model has been changed.
-      if (!alreadyChanging && !options.silent && this._changed) {
-        this.change(options);
-      }
+      if (!alreadyChanging && !options.silent && this._changed)  this.change(options);
       this._changing = false;
       return this;
     },
@@ -380,8 +378,7 @@
     // Calling this will cause all objects observing the model to update.
     change : function(options) {
       this.trigger('change', this, options);
-      // this is not needed?
-      // this._previousAttributes = _.clone(this.attributes);
+      this._previousAttributes = _.clone(this.attributes);
       this._changed = false;
     },
 
@@ -395,7 +392,7 @@
     // snapshot the model's state, later used to compute diff
     snapshot: function() {
       // shadowed, nested are not copyed
-      this._previousAttributes = _.clone(this._previousAttributes); 
+      this._snapshotAttributes = _.clone(this.attributes); 
       _.each(this.attributes, function(val, key) {
         // model or collection, take their own
         if(_.isFunction(val.snapshot)){
@@ -412,7 +409,7 @@
       }
       else {
         var now = this.attributes,
-            old = this._previousAttributes, changed = false;
+            old = this._snapshotAttributes, changed = false;
         for (var attr in now) {
           var nowVal = now[attr], oldVal = old[attr];
           if(_.isFunction(nowVal.diff)) { // a model or collection
