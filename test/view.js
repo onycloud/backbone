@@ -38,7 +38,8 @@ $(document).ready(function() {
   });
 
   test("View: delegateEvents", function() {
-    var counter = counter2 = 0;
+    var counter = 0,
+        counter2 = 0;
     view.el = document.body;
     view.increment = function(){ counter++; };
     $(view.el).bind('click', function(){ counter2++; });
@@ -88,6 +89,24 @@ $(document).ready(function() {
     var view = new Backbone.View({attributes : {'class': 'one', id: 'two'}});
     equals(view.el.className, 'one');
     equals(view.el.id, 'two');
+  });
+
+  test("Views: function as event handler", function() {
+    var count = 0,
+        ViewClass = Backbone.View.extend(function() {
+      function click() {
+        count++;
+      }
+      return {
+        el: $("body"),
+        events: {
+          "click": click
+        }
+      };
+    });
+    var view1 = new ViewClass;
+    $("body").trigger("click");
+    equals(1, count);
   });
 
   test("View: multiple views per element", function() {

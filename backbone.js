@@ -237,10 +237,12 @@
           // will trigger reset event
           old ? attrs[attr] = old.reset(newval, options)
             : attrs[attr] = new B(newval);
+          attrs[attr].parent = this; // save a parent reference;
         } else if (newval && !_.isNumber(newval) && !_.isString(newval) && B) {
           // is A Model
           old ? newval[attr] = old.set(newval, options)
             : attrs[attr] = new B(newval);
+          attrs[attr].parent = this;
         } else {
           attrs[attr] = newval;
         }
@@ -385,6 +387,48 @@
     hasChanged : function(attr) {
       if (attr) return this._previousAttributes[attr] != this.attributes[attr];
       return this._changed;
+    },
+
+    // snapshot the model's state, later used to compute diff
+    snapshot: function() {
+      // shadowed, nested are not copyed
+      this._snapshotAttributes = _.clone(this.attributes); 
+      _.each(this.attributes, function(val, key) {
+        // model or collection, take their own
+        if(_.isFunction(val.snapshot)){
+          val.snapshot();
+        }
+      });
+    },
+
+    // compute diff since snapshot
+    diff : function() {
+      if (this.isNew()){       // new, return all
+        // _method tell server create new
+        return $.extend(this.attributes, {"_method": 'POST'});
+      }
+      else {
+        var now = this.attributes,
+            old = this._snapshotAttributes, changed = false;
+        for (var attr in now) {
+          var nowVal = now[attr], oldVal = old[attr];
+          if(_.isFunction(nowVal.diff)) { // a model or collection
+            var tmp = nowVal.diff();
+            if(tmp) {
+              changed = changed || {};
+              changed[attr] = tmp;
+            }
+          } else if ( !_.isEqual(oldVal, nowVal)) { // plain data
+            changed = changed || {};
+            changed[attr] = nowVal;
+          }
+        }
+        if(changed) {
+          changed[this.idAttribute] = this.id;
+          changed["_method"] = 'PUT'; // _method tell server update
+        }
+        return changed;
+      }
     },
 
     // Return an object containing all the attributes that have changed, or false
@@ -622,6 +666,39 @@
       if (!options.silent) model.trigger('add', model, this, options);
       return model;
     },
+    
+    snapshot : function() {
+      if(this.length > 0) {
+        var idAttribute =  this.models[0].idAttribute,
+            ids = _.compact(this.pluck(idAttribute));
+        this._modelIdAttribute = idAttribute; // save models' id attribute
+        this._previousIds = ids; // save a snapshot
+        this.map(function(model) {  
+          model.snapshot();
+        });
+      }
+    },
+
+    diff : function() {
+      var idAttribute = this.length > 0 ? this.models[0].idAttribute : 
+            this._modelIdAttribute,
+          ids = _.compact(this.pluck(idAttribute)),
+          removed = _.filter(this._previousIds, function(value) {
+            return !_.include(ids, value);
+          }),
+          modelsDiff = _.compact(this.map(function (model) {
+            return model.diff();
+          }));
+
+      var changed = modelsDiff.concat(_.map(removed, function(id) {
+        var o = { _method: 'DELETE'};
+        o[idAttribute] = id;
+        return o;
+      }));
+      
+      if(changed.length === 0) changed = false;
+      return changed;
+    },
 
     // Internal implementation of removing a single model from the set, updating
     // hash indexes for `id` and `cid` lookups.
@@ -733,7 +810,13 @@
         routes.unshift([route, this.routes[route]]);
       }
       for (var i = 0, l = routes.length; i < l; i++) {
-        this.route(routes[i][0], routes[i][1], this[routes[i][1]]);
+        var callback = routes[i][1];
+        if(_.isFunction(callback)) {
+          this.route(routes[i][0], callback.name, callback);
+        } else {
+          // backbone default
+          this.route(routes[i][0], callback, this[callback]);
+        }
       }
     },
 
@@ -976,11 +1059,19 @@
       if (!(events || (events = this.events))) return;
       $(this.el).unbind('.delegateEvents' + this.cid);
       for (var key in events) {
-        var method = this[events[key]];
-        if (!method) throw new Error('Event "' + events[key] + '" does not exist');
+        var method = events[key];
         var match = key.match(eventSplitter);
         var eventName = match[1], selector = match[2];
-        method = _.bind(method, this);
+
+        if (_.isFunction(method)) {
+          method = _.bind(method, this);
+        } else {
+          // backbone default
+          method = _.bind(this[method], this);
+        }
+        if (!method) {
+          throw new Error('Event "' + events[key] + '" does not exist');
+        }
         eventName += '.delegateEvents' + this.cid;
         if (selector === '') {
           $(this.el).bind(eventName, method);
@@ -1110,7 +1201,14 @@
   // Similar to `goog.inherits`, but uses a hash of prototype properties and
   // class properties to be extended.
   var inherits = function(parent, protoProps, staticProps) {
-    var child;
+    var child,
+        conf,
+        isf = _.isFunction(protoProps);
+
+    if( isf ) {
+      conf = protoProps;
+      protoProps = {};
+    }
 
     // The constructor function for the new subclass is either defined by you
     // (the "constructor" property in your `extend` definition), or defaulted
@@ -1118,7 +1216,12 @@
     if (protoProps && protoProps.hasOwnProperty('constructor')) {
       child = protoProps.constructor;
     } else {
-      child = function(){ return parent.apply(this, arguments); };
+      child = function() {
+        if(isf) {
+          _.extend(this, conf.apply(null));
+        }
+        return parent.apply(this, arguments);
+      };
     }
 
     // Inherit class (static) properties from parent.
