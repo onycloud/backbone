@@ -235,10 +235,11 @@
       if (!newval) return;
       if (_.isEqual(newval, oldval)) return;
 
-      if(_.isArray(newval) && (Klass instanceof Backbone.Collection)) {
+      // Use duck typing to check if Klass inherits Model/Collection
+      if(_.isArray(newval) && Klass && _.isFunction(Klass.reset)) {
         now[attr] = oldval ? oldval.reset(newval, options)
           : new Klass(newval, options);
-      } else if ($.isPlainObject(newval) && (Klass instanceof Backbone.Model) {
+      } else if ($.isPlainObject(newval) && Klass && _.isFunction(Klass.set)) {
         now[attr] = oldval ? oldval.set(newval, options)
           : new Klass(newval, options);
       } else {
