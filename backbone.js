@@ -221,7 +221,9 @@
       }
 
       // Fire the `"change"` event, if the model has been changed.
-      if (!alreadyChanging && !options.silent && this._changed) this.change(options);
+      if (!alreadyChanging && !options.silent && this._changed) {
+        this.change(options);
+      }
       this._changing = false;
       return this;
     },
@@ -237,10 +239,12 @@
           // will trigger reset event
           old ? attrs[attr] = old.reset(newval, options)
             : attrs[attr] = new B(newval);
+          attrs[attr].parent = this; // save a parent reference;
         } else if (newval && !_.isNumber(newval) && !_.isString(newval) && B) {
           // is A Model
           old ? newval[attr] = old.set(newval, options)
             : attrs[attr] = new B(newval);
+          attrs[attr].parent = this;
         } else {
           attrs[attr] = newval;
         }
@@ -376,7 +380,8 @@
     // Calling this will cause all objects observing the model to update.
     change : function(options) {
       this.trigger('change', this, options);
-      this._previousAttributes = _.clone(this.attributes);
+      // this is not needed?
+      // this._previousAttributes = _.clone(this.attributes);
       this._changed = false;
     },
 
@@ -385,6 +390,48 @@
     hasChanged : function(attr) {
       if (attr) return this._previousAttributes[attr] != this.attributes[attr];
       return this._changed;
+    },
+
+    // snapshot the model's state, later used to compute diff
+    snapshot: function() {
+      // shadowed, nested are not copyed
+      this._previousAttributes = _.clone(this._previousAttributes); 
+      _.each(this.attributes, function(val, key) {
+        // model or collection, take their own
+        if(_.isFunction(val.snapshot)){
+          val.snapshot();
+        }
+      });
+    },
+
+    // compute diff since snapshot
+    diff : function() {
+      if (this.isNew()){       // new, return all
+        // _method tell server create new
+        return $.extend(this.attributes, {"_method": 'POST'});
+      }
+      else {
+        var now = this.attributes,
+            old = this._previousAttributes, changed = false;
+        for (var attr in now) {
+          var nowVal = now[attr], oldVal = old[attr];
+          if(_.isFunction(nowVal.diff)) { // a model or collection
+            var tmp = nowVal.diff();
+            if(tmp) {
+              changed = changed || {};
+              changed[attr] = tmp;
+            }
+          } else if ( !_.isEqual(oldVal, nowVal)) { // plain data
+            changed = changed || {};
+            changed[attr] = nowVal;
+          }
+        }
+        if(changed) {
+          changed[this.idAttribute] = this.id;
+          changed["_method"] = 'PUT'; // _method tell server update
+        }
+        return changed;
+      }
     },
 
     // Return an object containing all the attributes that have changed, or false
@@ -621,6 +668,39 @@
       this.length++;
       if (!options.silent) model.trigger('add', model, this, options);
       return model;
+    },
+    
+    snapshot : function() {
+      if(this.length > 0) {
+        var idAttribute =  this.models[0].idAttribute,
+            ids = _.compact(this.pluck(idAttribute));
+        this._modelIdAttribute = idAttribute; // save models' id attribute
+        this._previousIds = ids; // save a snapshot
+        this.map(function(model) {  
+          model.snapshot();
+        });
+      }
+    },
+
+    diff : function() {
+      var idAttribute = this.length > 0 ? this.models[0].idAttribute : 
+            this._modelIdAttribute,
+          ids = _.compact(this.pluck(idAttribute)),
+          removed = _.filter(this._previousIds, function(value) {
+            return !_.include(ids, value);
+          }),
+          modelsDiff = _.compact(this.map(function (model) {
+            return model.diff();
+          }));
+
+      var changed = modelsDiff.concat(_.map(removed, function(id) {
+        var o = { _method: 'DELETE'};
+        o[idAttribute] = id;
+        return o;
+      }));
+      
+      if(changed.length === 0) changed = false;
+      return changed;
     },
 
     // Internal implementation of removing a single model from the set, updating
