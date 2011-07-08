@@ -256,7 +256,7 @@
         params.contentType = 'application/json';
         var diff = model._diff();
         if (!diff) {
-          throw new Error("on diff find");
+          throw new Error("no diff find");
         }
         params.data = JSON.stringify(diff);
       }
@@ -278,7 +278,7 @@
     return _.isFunction(object.url) ? object.url() : object.url;
   };
 
-  root.OC = $.extend(root.OC, {   // export
+  root.OC_Backbone = $.extend(root.OC_Backbone, {   // export
     Model      : Model,
     Collection : Collection,
     sync       : sync           // export

@@ -1,7 +1,8 @@
 $(document).ready(function() {
   var new_data,
       jqueryAjax = $.ajax,
-      lastRequest;
+      lastRequest,
+      teacher;
 
   var nested_data = {
     id: 1,
@@ -22,11 +23,11 @@ $(document).ready(function() {
     setup : function() {
       jqueryAjax = $.ajax;
       new_data = {status: "new",  www: "what"};
-      var Model = OC.Model.extend({
-        students : OC.Collection.extend({}),
-        info     : OC.Model,
+      var Model = OC_Backbone.Model.extend({
+        students : OC_Backbone.Collection.extend({}),
+        info     : OC_Backbone.Model,
         url      : "/diffs",
-        sync     : OC.sync
+        sync     : OC_Backbone.sync
       });
 
       var data = {_op: '!',
@@ -37,7 +38,7 @@ $(document).ready(function() {
                     students: [
                       {_op: '+', _data: {id: 100, name: 'new-student'}},
                       {_op: '-', _data: {id: 1}}]}};
-      window.teacher = new Model(nested_data);
+      teacher = new Model(nested_data);
       $.ajax = function(obj) {         // mock $.ajax
         lastRequest = obj;
         var dfr = $.Deferred();
@@ -47,7 +48,6 @@ $(document).ready(function() {
         return dfr.promise();
       };
     }});
-
 
   asyncTest("Model.savediff: send diff", function() {
     teacher.snapshot();

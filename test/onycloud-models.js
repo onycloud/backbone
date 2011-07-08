@@ -1,6 +1,14 @@
 $(document).ready(function() {
-
-  module("Onycloud.Model");
+  var teacher;
+  module("Onycloud.Model", {
+    setup: function() {
+      var Model = OC_Backbone.Model.extend({
+        students: OC_Backbone.Collection.extend({}),
+        info: OC_Backbone.Model
+      });
+      teacher = new Model(nested_data);
+    }
+  });
 
   var nested_data = {
     id: 1,
@@ -14,25 +22,14 @@ $(document).ready(function() {
   };
 
   test("Model: nested attribute", function() {
-    var Col =  OC.Collection.extend({});
-    var Model = OC.Model.extend({
-      students: Col,
-      info: OC.Model
-    });
-    var teacher = new Model(nested_data);
-    ok(teacher.get('students') instanceof Col, 'students is a Collection');
+    ok(teacher.get('students') instanceof Backbone.Collection,
+       'students is a Collection');
     ok(teacher.get('info') instanceof Backbone.Model, 'info is a Model');
     var json = teacher.toJSON();
     ok(_.isEqual(json, nested_data), 'toJSON is recursive');
   });
 
   test("Model: nested attribute, simple diff", function() {
-    var Col =  OC.Collection.extend({});
-    var Model = OC.Model.extend({
-      students: Col,
-      info: OC.Model
-    });
-    var teacher = new Model(nested_data);
     teacher.snapshot();     // mark a history snapshot
     var new_data = {status: "new",  www: "what"};
 
@@ -48,12 +45,6 @@ $(document).ready(function() {
   });
 
   test("Model: nested attribute, nested model diff", function() {
-    var Col =  OC.Collection.extend({});
-    var Model = OC.Model.extend({
-      students: Col,
-      info: OC.Model
-    });
-    var teacher = new Model(nested_data);
     teacher.snapshot();     // mark a history snapshot
     var new_data = {status: "new",  www: "what"};
 
@@ -71,12 +62,6 @@ $(document).ready(function() {
   });
 
   test("Model: nested attribute, nested collection diff", function() {
-    var Col =  OC.Collection.extend({});
-    var Model = OC.Model.extend({
-      students: Col,
-      info: OC.Model
-    });
-    var teacher = new Model(nested_data);
     teacher.snapshot();     // mark a history snapshot
     var new_data = {status: "new",  www: "what"};
 
@@ -98,14 +83,6 @@ $(document).ready(function() {
   });
 
   test("Model: nested attribute, nested collection remove diff", function() {
-    var Col =  OC.Collection.extend({});
-    var Model = OC.Model.extend({
-      students: Col,
-      info: OC.Model
-    });
-    var new_data = {status: "new",  www: "what"};
-
-    var teacher = new Model(nested_data);
     teacher.snapshot();     // mark a history snapshot
     var students = teacher.get('students');
     students.add({name: 'new-student'});
