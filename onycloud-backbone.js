@@ -40,7 +40,7 @@
     // copy and modify Backbone's set to support recursive
     set : function(attrs, options) {
       // Extract attributes and options.
-      options || (options = {});
+      options = options || {};
       if (!attrs) return this;
       if (attrs.attributes) attrs = attrs.attributes;
 
@@ -70,6 +70,7 @@
     },
 
     _set : function(attr, newval, options) {
+      options = options || {};
       var Klass =  this[attr],
           now = this.attributes,
           oldval = now[attr],
@@ -99,6 +100,7 @@
     },
     //  save diff since last time call snapshot
     savediff : function (options) {
+      options = options || {};
       var sync = (this.sync || Backbone.sync),
           that = this;
       var ajax = sync.call(this,'sync', this, options);
@@ -171,7 +173,7 @@
 
   var Collection = Backbone.Collection.extend({
 
-    model: Model,               // OC.Collection needs OC.Model
+    model: Model,               // needs OC Model
 
     // 1. save a snapshot of ids to detect any remove,
     // 2. all model recursivly do snappshot
@@ -269,7 +271,7 @@
 
   // String, Numbers, Boleans are not object, object literal are object
   var isObject = function(obj) {
-    return obj.constructor === Object;
+    return obj && obj.constructor === Object;
   };
 
   // Copyed from Backbone
